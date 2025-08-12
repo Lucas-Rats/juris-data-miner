@@ -1,0 +1,27 @@
+# INTERFACE GRÁFICA (usando wheels oficiais)
+pyqt5-sip
+pyqt5-qt5
+PyQt5
+
+# PROCESSAMENTO DE DOCUMENTOS (puro Python)
+python-docx
+pypdf
+pdfminer.six
+
+# ANÁLISE DE TEXTO
+nltk
+python-Levenshtein
+
+# WEB SCRAPING
+beautifulsoup4
+requests
+html5lib
+
+# RELATÓRIOS
+fpdf2
+pandas
+markdown
+
+# UTILITÁRIOS
+tqdm
+python-magic-bin
