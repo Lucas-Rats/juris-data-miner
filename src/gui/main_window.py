@@ -1,3 +1,8 @@
+#JURIS-DATA-MINER
+#Proibida a modificação ou uso comercial sem autorização expressa.
+#Proibida reprodução, distribuição ou engenharia reversa sem autorização.
+#Copyright © 2025 Lucas Rats. Todos os direitos reservados.
+
 # Importando Bibliotecas
 from pathlib import Path  # Biblioteca para manipular caminhos de arquivos multiplataformas
 import os  # Biblioteca para operações com sistemas de arquivos

@@ -1,3 +1,8 @@
+#JURIS-DATA-MINER
+#Proibida a modificação ou uso comercial sem autorização expressa.
+#Proibida reprodução, distribuição ou engenharia reversa sem autorização.
+#Copyright © 2025 Lucas Rats. Todos os direitos reservados.
+
 # Importa o módulo sys para manipulação do sistema (encerramento da aplicação, etc.)
 import sys
 
@@ -39,3 +44,4 @@ def main():
 if __name__ == "__main__":
     # Chama nossa função principal
     main()
+
