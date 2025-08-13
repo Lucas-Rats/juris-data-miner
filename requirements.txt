@@ -25,3 +25,9 @@ markdown
 # UTILITÁRIOS
 tqdm
 python-magic-bin
+
+# PARA MELHORAR O NLP
+spacy
+
+# PARA VALIDAÇÃO DE ARQUIVOS
+python-magic

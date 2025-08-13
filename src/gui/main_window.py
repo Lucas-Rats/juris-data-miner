@@ -1,115 +1,202 @@
-#JURIS-DATA-MINER
-#Proibida a modificação ou uso comercial sem autorização expressa.
-#Proibida reprodução, distribuição ou engenharia reversa sem autorização.
-#Copyright © 2025 Lucas Rats. Todos os direitos reservados.
+# JURIS-DATA-MINER
+# Proibida a modificação ou uso comercial sem autorização expressa.
+# Proibida reprodução, distribuição ou engenharia reversa sem autorização.
+# Copyright © 2025 Lucas Rats. Todos os direitos reservados.
 
-# Importando Bibliotecas
-from pathlib import Path  # Biblioteca para manipular caminhos de arquivos multiplataformas
-import os  # Biblioteca para operações com sistemas de arquivos
-from PyQt5.QtWidgets import (QMainWindow, QApplication, QVBoxLayout, 
-                            QWidget, QListWidget, QLabel, QPushButton,
-                            QFileDialog)  # Biblioteca de componentes da interface gráfica
-import sys  # Biblioteca para interação com o sistema
+from pathlib import Path
+import os
+import sys
+from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QWidget, QPushButton, 
+                            QLabel, QFileDialog, QTextEdit, QProgressBar,
+                            QGroupBox, QHBoxLayout, QComboBox, QListWidget,
+                            QMessageBox)
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QApplication
 
 class MainWindow(QMainWindow):
-    
-    # Inicializa a janela principal do aplicativo. Configura propriedades básicas e inicializa a interface.
     def __init__(self):
-
-        super().__init__()  # Chama o construtor da classe pai (QMainWindow)
+        super().__init__()
         
-        # Define o caminho base do projeto (3 níveis acima do arquivo atual)
+        # Configurações do projeto
         self.BASE_DIR = Path(__file__).parent.parent.parent
-        
-        # Configurações iniciais da janela:
-        self.setWindowTitle("Minerador de Jurisprudências")  # Título da janela
-        self.setGeometry(100, 100, 800, 606)  # Posição (x,y) e tamanho (largura, altura)
-
-        # Lista para armazenar os caminhos completos dos arquivos selecionados
         self.arquivos_selecionados = []
         
-        # Chama o método que constrói a interface
+        # Configurações da janela
+        self.setWindowTitle("Minerador de Jurisprudências v2.0")
+        self.setMinimumSize(QSize(800, 600))
+        
+        # Inicializa a interface
         self.setup_ui()
 
-    # Constroi todos os componentes da interface gráfica
     def setup_ui(self):
+        """Configura todos os componentes da interface."""
+        # Widget Central
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
         
-        # Widget Central - container principal
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)  # Define como widget central
-
-        # Layout Principal - organiza os componentes verticalmente
-        self.layout = QVBoxLayout()
-        self.central_widget.setLayout(self.layout)
+        # Layout Principal
+        main_layout = QVBoxLayout()
+        central_widget.setLayout(main_layout)
         
-        # Botão para carregar arquivos
+        # 1. Grupo de Upload
+        upload_group = QGroupBox("Seleção de Documentos")
+        upload_layout = QVBoxLayout()
+        
         self.btn_load = QPushButton("Carregar Petições")
-        self.btn_load.clicked.connect(self.load_files)  # Conecta o clique ao método
-        self.layout.addWidget(self.btn_load)  # Adiciona ao layout
+        self.btn_load.setIcon(QIcon.fromTheme('document-open'))
+        self.btn_load.clicked.connect(self.load_files)
 
-        # Rótulo para a lista de arquivos
-        self.label_files = QLabel("Arquivos selecionados:")
-        self.layout.addWidget(self.label_files)
-
-        # Lista para exibir os nomes dos arquivos selecionados
+        self.btn_remove = QPushButton("Remover Selecionados")
+        self.btn_remove.setIcon(QIcon.fromTheme('list-remove'))
+        self.btn_remove.setEnabled(False)
+        self.btn_remove.clicked.connect(self._remove_files)
+        
+        self.label_files = QLabel("Nenhum arquivo selecionado")
+        self.label_files.setAlignment(Qt.AlignCenter)
+        
         self.file_list = QListWidget()
-        self.layout.addWidget(self.file_list)
+        
+        upload_layout.addWidget(self.btn_load)
+        upload_layout.addWidget(self.btn_remove)
+        upload_layout.addWidget(self.label_files)
+        upload_layout.addWidget(self.file_list)
+        upload_group.setLayout(upload_layout)
+        
+        # 2. Grupo de Visualização
+        preview_group = QGroupBox("Pré-visualização")
+        self.text_preview = QTextEdit()
+        self.text_preview.setReadOnly(True)
+        self.text_preview.setPlaceholderText("O conteúdo do documento aparecerá aqui...")
+        
+        preview_layout = QVBoxLayout()
+        preview_layout.addWidget(self.text_preview)
+        preview_group.setLayout(preview_layout)
+        
+        # 3. Grupo de Ações
+        action_group = QGroupBox("Ações")
+        self.btn_process = QPushButton("Processar Documentos")
+        self.btn_process.setEnabled(False)
+        
+        self.combo_format = QComboBox()
+        self.combo_format.addItems(["PDF", "CSV", "Markdown"])
+        
+        self.btn_export = QPushButton("Exportar Resultados")
+        self.btn_export.setEnabled(False)
+        
+        action_layout = QHBoxLayout()
+        action_layout.addWidget(self.btn_process)
+        action_layout.addWidget(self.combo_format)
+        action_layout.addWidget(self.btn_export)
+        action_group.setLayout(action_layout)
+        
+        # 4. Barra de Progresso
+        self.progress_bar = QProgressBar()
+        self.progress_bar.hide()
+        
+        # Adiciona todos ao layout principal
+        main_layout.addWidget(upload_group)
+        main_layout.addWidget(preview_group)
+        main_layout.addWidget(action_group)
+        main_layout.addWidget(self.progress_bar)
+        
+        # Conecta sinais
+        self.btn_process.clicked.connect(self.processar_arquivos)
+        self.file_list.itemSelectionChanged.connect(self._update_status)
+        self.file_list.itemSelectionChanged.connect(self._show_file_preview)
 
-        # Botão para processar os arquivos
-        self.btn_process = QPushButton("Processar")
-        self.btn_process.setEnabled(False)  # Inicia desabilitado
-        self.btn_process.clicked.connect(self.processar_arquivos)  # Conecta ao método
-        self.layout.addWidget(self.btn_process)
-
-    # Abre diálogo para seleção de arquivos PDF/DOCX. Armazena os arquivos válidos e atualiza a interface.
     def load_files(self):
-
-        # Define o caminho padrão como data/input dentro do projeto
+        """Abre diálogo para seleção de arquivos."""
         default_path = str(self.BASE_DIR / "data/input")
+        os.makedirs(default_path, exist_ok=True)
         
-        # Cria o diretório se não existir
-        if not os.path.exists(default_path):
-            os.makedirs(default_path)  # Cria todos os diretórios necessários
-        
-        # Abre o diálogo de seleção de arquivos
         files, _ = QFileDialog.getOpenFileNames(
-            self,  # Janela pai
-            "Selecionar Petições",  # Título do diálogo
-            default_path,  # Diretório inicial
-            "Documentos (*.pdf *.docx)"  # Filtro de extensões
+            self,
+            "Selecionar Petições",
+            default_path,
+            "Documentos (*.pdf *.docx *.txt)"
         )
         
-        if files:  # Se arquivos foram selecionados
-            self.arquivos_selecionados = []  # Limpa lista anterior
-            self.file_list.clear()  # Limpa a exibição
+        if files:
+            self.arquivos_selecionados = []
+            self.file_list.clear()
             
             for file in files:
-                # Verifica se a extensão é .pdf ou .docx (case insensitive)
-                if file.lower().endswith(('.pdf', '.docx')):
-                    self.arquivos_selecionados.append(file)  # Armazena caminho completo
-                    self.file_list.addItem(os.path.basename(file))  # Mostra apenas o nome
+                if file.lower().endswith(('.pdf', '.docx', '.txt')):
+                    self.arquivos_selecionados.append(file)
+                    self.file_list.addItem(os.path.basename(file))
             
-            # Habilita o botão de processar se há arquivos válidos
-            self.btn_process.setEnabled(len(self.arquivos_selecionados) > 0)
+            self._update_status()
 
-    # Método que será chamado para processar os arquivos selecionados. Atualmente apenas exibe os caminhos no terminal.
-    def processar_arquivos(self):
-        
-        if not self.arquivos_selecionados:  # Se não há arquivos
-            return  # Sai da função
-            
-        # Exibe os arquivos que serão processados
-        print(f"Arquivos para processar: {self.arquivos_selecionados}")
-
-# Função principal que inicia a aplicação.
-def main():
+    def _remove_files(self):
+        """Remove arquivos selecionados da lista."""
+        selected_items = self.file_list.selectedItems()
+        if not selected_items:
+            return
     
-    app = QApplication(sys.argv)  # Cria a aplicação Qt
-    window = MainWindow()  # Cria a janela principal
-    window.show()  # Mostra a janela
-    sys.exit(app.exec_())  # Inicia o loop de eventos e trata encerramento
+        # Confirmação antes de remover
+        reply = QMessageBox.question(
+            self,
+            "Confirmar Exclusão",
+            f"Remover {len(selected_items)} arquivo(s) selecionado(s)?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            for item in selected_items:
+                index = self.file_list.row(item)
+                self.arquivos_selecionados.pop(index)
+                self.file_list.takeItem(index)
+            
+            self._update_status()
 
-# Ponto de entrada do programa - só executa se o arquivo for rodado diretamente.
+    def _update_status(self):
+        """Atualiza o status da interface."""
+        count = len(self.arquivos_selecionados)
+        self.label_files.setText(f"{count} arquivo(s) selecionado(s)")
+        self.btn_process.setEnabled(count > 0)
+        self.btn_remove.setEnabled(count > 0 and len(self.file_list.selectedItems()) > 0)
+
+    def _show_file_preview(self):
+        """Mostra pré-visualização do arquivo selecionado na lista."""
+        selected_items = self.file_list.selectedItems()
+        if not selected_items:
+            return
+            
+        file_index = self.file_list.row(selected_items[0])
+        file_path = self.arquivos_selecionados[file_index]
+        
+        # Simulação - substituir pela leitura real depois
+        self.text_preview.setText(f"Pré-visualização de: {os.path.basename(file_path)}\n\n"
+                                "Esta funcionalidade mostrará o conteúdo extraído do documento.")
+
+    def processar_arquivos(self):
+        """Processa os arquivos selecionados."""
+        if not self.arquivos_selecionados:
+            return
+            
+        self.progress_bar.show()
+        self.progress_bar.setRange(0, len(self.arquivos_selecionados))
+        
+        for i, file_path in enumerate(self.arquivos_selecionados, 1):
+            self.progress_bar.setValue(i)
+            QApplication.processEvents()
+            
+            # TODO: Implementar processamento real aqui
+            print(f"Processando: {file_path}")
+        
+        self.progress_bar.hide()
+        self.btn_export.setEnabled(True)
+
+def main():
+    app = QApplication(sys.argv)
+    
+    # Configura estilo visual
+    app.setStyle("Fusion")
+    
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec_())
+
 if __name__ == "__main__":
-
-    main()  # Chama a função principal
+    main()
